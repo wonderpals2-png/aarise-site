@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aarise — A companion that watches when you can't</title>
+<meta name="description" content="Aarise is a wrist-worn safety companion: tiered SOS, offline-first cellular alerts, live location, and one-tap rides home.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf6f7;
+    --paper-dim:#f2e9ec;
+    --surface:#ffffff;
+    --ink:#171219;
+    --ink-soft:#54474d;
+    --rose:#a6416b;
+    --rose-deep:#7a2c4e;
+    --rose-pale:#e8d2db;
+    --line: rgba(23,18,25,0.12);
+    --radius: 18px;
+    --maxw: 1180px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  a{color:inherit;}
+  img,svg{display:block;max-width:100%;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+  @media (max-width:640px){.wrap{padding:0 20px;}}
+
+  /* focus visibility */
+  a:focus-visible, button:focus-visible{outline:2px solid var(--rose-deep);outline-offset:3px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+
+  /* ---------- Nav ---------- */
+  header.site{
+    position:sticky; top:0; z-index:40;
+    background:rgba(250,246,247,0.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav.wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:72px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Fraunces',serif;font-size:1.25rem;font-weight:600;}
+  .brand .mark{width:28px;height:28px;}
+  nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0;font-size:0.93rem;}
+  nav ul a{text-decoration:none;color:var(--ink-soft);transition:color .15s ease;}
+  nav ul a:hover{color:var(--rose-deep);}
+  .nav-cta{
+    background:var(--ink); color:var(--paper);
+    padding:10px 20px; border-radius:999px; font-size:0.9rem;
+    text-decoration:none; font-weight:500;
+    transition:background .15s ease;
+  }
+  .nav-cta:hover{background:var(--rose-deep);}
+  .nav-links{display:flex;align-items:center;gap:28px;}
+  @media (max-width:760px){ nav ul{display:none;} }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative;
+    padding:88px 0 60px;
+    overflow:visible;
+  }
+  .hero .wrap{
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    gap:56px;
+    align-items:center;
+    position:relative;
+  }
+  @media (max-width:900px){ .hero .wrap{grid-template-columns:1fr;} }
+
+  .eyebrow{
+    font-size:0.85rem; color:var(--rose-deep); font-weight:600;
+    display:flex; align-items:center; gap:8px; margin-bottom:18px;
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--rose);display:inline-block;animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+
+  .hero h1{
+    font-size:clamp(2.4rem, 4.6vw, 3.6rem);
+    line-height:1.08;
+    max-width:14ch;
+  }
+  .hero h1 em{font-style:italic;color:var(--rose-deep);}
+  .hero p.lede{
+    margin-top:22px;
+    font-size:1.08rem;
+    color:var(--ink-soft);
+    max-width:48ch;
+  }
+  .hero .ctas{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap;}
+  .btn{
+    padding:13px 24px; border-radius:999px; font-size:0.95rem; font-weight:600;
+    text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    border:1px solid transparent; cursor:pointer; font-family:inherit;
+  }
+  .btn-primary{background:var(--rose-deep); color:#fff;}
+  .btn-primary:hover{background:#5f2140;}
+  .btn-ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--ink);}
+
+  .hero-stats{display:flex; gap:34px; margin-top:44px; flex-wrap:wrap;}
+  .hero-stats div{border-left:2px solid var(--rose-pale); padding-left:14px;}
+  .hero-stats b{display:block; font-family:'Fraunces',serif; font-size:1.5rem; font-weight:600;}
+  .hero-stats span{font-size:0.82rem; color:var(--ink-soft);}
+
+  /* ---------- Watch render + companion ---------- */
+  .hero-visual{position:relative; display:flex; justify-content:center; align-items:flex-start; min-height:460px;}
+  .watch-stage{
+    position:relative; width:min(360px, 90%);
+    background:linear-gradient(165deg, var(--surface), var(--paper-dim));
+    border:1px solid var(--line);
+    border-radius:28px;
+    padding:38px 28px 28px;
+    box-shadow:0 30px 60px -30px rgba(23,18,25,0.25);
+  }
+  .watch-face{
+    width:180px; height:180px; margin:0 auto;
+    border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #ffffff, var(--paper-dim) 60%, var(--rose-pale) 100%);
+    border:7px solid var(--ink);
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .watch-face::before{
+    content:"";
+    position:absolute; inset:-17px;
+    border-radius:50%;
+    border:3px solid var(--rose);
+    opacity:0.5;
+  }
+  .watch-time{font-family:'Fraunces',serif; font-size:1.9rem; color:var(--ink);}
+  .watch-sub{position:absolute; bottom:34px; font-size:0.62rem; letter-spacing:0.04em; color:var(--rose-deep); font-weight:600;}
+  .watch-strap-top, .watch-strap-bottom{
+    width:70px; height:22px; background:var(--ink); margin:0 auto;
+    border-radius:0 0 6px 6px;
+  }
+  .watch-strap-bottom{border-radius:6px 6px 0 0;}
+  .watch-caption{text-align:center; margin-top:20px; font-size:0.85rem; color:var(--ink-soft);}
+  .watch-caption b{color:var(--ink); font-weight:600;}
+
+  .sos-badge{
+    position:absolute; top:-14px; right:-14px;
+    background:var(--rose); color:#fff; font-size:0.72rem; font-weight:700;
+    padding:8px 14px; border-radius:999px;
+    box-shadow:0 8px 18px -6px rgba(166,65,107,0.6);
+    transform:rotate(4deg);
+  }
+
+  /* companion pet */
+  .companion-wrap{
+    position:absolute; right:-6px; bottom:-26px; width:128px;
+    filter:drop-shadow(0 14px 18px rgba(23,18,25,0.16));
+  }
+  @media (max-width:900px){ .companion-wrap{position:static; margin:28px auto 0; right:auto; bottom:auto;} }
+  .companion-caption{
+    text-align:center; font-size:0.72rem; color:var(--ink-soft); margin-top:6px;
+    font-style:italic;
+  }
+
+  /* ---------- Section shell ---------- */
+  section{padding:86px 0;}
+  .section-head{max-width:620px; margin-bottom:48px;}
+  .section-head .tag{color:var(--rose-deep); font-weight:600; font-size:0.85rem; margin-bottom:12px; display:block;}
+  .section-head h2{font-size:clamp(1.8rem,3vw,2.5rem); line-height:1.15;}
+  .section-head p{color:var(--ink-soft); margin-top:16px; font-size:1.02rem;}
+
+  /* ---------- Features ---------- */
+  .feature-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+  }
+  @media (max-width:860px){ .feature-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .feature-grid{grid-template-columns:1fr;} }
+  .feature{
+    background:var(--surface); padding:32px 28px; min-height:220px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .feature .ficon{width:38px;height:38px;}
+  .feature h3{font-size:1.1rem; font-weight:600;}
+  .feature p{color:var(--ink-soft); font-size:0.93rem; margin:0;}
+
+  /* ---------- How it works ---------- */
+  .how{background:var(--ink); color:var(--paper); border-radius:28px; margin:0 32px; padding:64px 48px;}
+  @media (max-width:640px){ .how{margin:0 20px; padding:48px 24px;} }
+  .how .section-head h2, .how .section-head .tag{color:var(--paper);}
+  .how .section-head p{color:rgba(250,246,247,0.65);}
+  .steps{display:grid; grid-template-columns:repeat(4,1fr); gap:28px;}
+  @media (max-width:860px){ .steps{grid-template-columns:1fr 1fr;} }
+  @media (max-width:520px){ .steps{grid-template-columns:1fr;} }
+  .step{border-top:2px solid rgba(250,246,247,0.22); padding-top:18px;}
+  .step .tier{font-family:'Fraunces',serif; font-size:1.6rem; color:var(--rose-pale); margin-bottom:8px;}
+  .step h4{font-size:1rem; font-weight:600; margin-bottom:8px;}
+  .step p{font-size:0.88rem; color:rgba(250,246,247,0.65); margin:0;}
+
+  /* ---------- App preview ---------- */
+  .app-section .wrap{display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center;}
+  @media (max-width:900px){ .app-section .wrap{grid-template-columns:1fr;} }
+  .phone{
+    width:min(280px,85%); margin:0 auto;
+    background:var(--ink); border-radius:34px; padding:12px;
+    box-shadow:0 40px 70px -32px rgba(23,18,25,0.35);
+  }
+  .phone-screen{
+    background:var(--paper); border-radius:24px; overflow:hidden; aspect-ratio:9/18.5;
+    display:flex; flex-direction:column;
+  }
+  .phone-topbar{padding:18px 18px 10px; display:flex; justify-content:space-between; align-items:center;}
+  .phone-topbar b{font-family:'Fraunces',serif; font-size:1rem;}
+  .phone-topbar span{font-size:0.65rem; color:var(--rose-deep); background:var(--rose-pale); padding:3px 9px; border-radius:999px; font-weight:600;}
+  .phone-sos{
+    margin:8px 18px; background:linear-gradient(160deg,var(--rose),var(--rose-deep));
+    color:#fff; border-radius:18px; padding:22px; text-align:center;
+  }
+  .phone-sos b{font-family:'Fraunces',serif; font-size:1.15rem; display:block;}
+  .phone-sos span{font-size:0.72rem; opacity:0.85;}
+  .phone-list{margin:14px 18px; display:flex; flex-direction:column; gap:10px; flex:1;}
+  .phone-row{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem;
+  }
+  .phone-row b{font-weight:600; display:block; font-size:0.85rem;}
+  .phone-row span{color:var(--ink-soft); font-size:0.74rem;}
+  .phone-row .go{color:var(--rose-deep); font-weight:700;}
+
+  .app-copy ul{list-style:none; margin:28px 0 0; padding:0; display:flex; flex-direction:column; gap:18px;}
+  .app-copy li{display:flex; gap:14px; align-items:flex-start;}
+  .app-copy li .num{
+    font-family:'Fraunces',serif; color:var(--rose-deep); font-weight:600; font-size:1.05rem;
+    width:28px; flex:none;
+  }
+  .app-copy li p{margin:0; color:var(--ink-soft); font-size:0.95rem;}
+  .app-copy li b{display:block; margin-bottom:3px;}
+
+  /* ---------- Specs ---------- */
+  .specs-table{width:100%; border-collapse:collapse; margin-top:8px;}
+  .specs-table tr{border-top:1px solid var(--line);}
+  .specs-table tr:last-child{border-bottom:1px solid var(--line);}
+  .specs-table td{padding:18px 4px; font-size:0.94rem; vertical-align:top;}
+  .specs-table td:first-child{color:var(--rose-deep); font-weight:600; width:200px;}
+  .specs-table td:last-child{color:var(--ink-soft);}
+  @media (max-width:640px){
+    .specs-table td:first-child{width:auto; display:block; padding-bottom:4px;}
+    .specs-table tr{display:block; padding:16px 0;}
+    .specs-table td{display:block; padding:2px 0;}
+  }
+
+  /* ---------- CTA / team ---------- */
+  .cta-band{
+    background:var(--rose-pale); border-radius:28px; margin:0 32px;
+    padding:60px 48px; text-align:center;
+  }
+  @media (max-width:640px){ .cta-band{margin:0 20px; padding:44px 24px;} }
+  .cta-band h2{font-size:clamp(1.6rem,3vw,2.2rem); max-width:22ch; margin:0 auto;}
+  .cta-band p{color:var(--ink-soft); margin-top:14px;}
+  .cta-band .ctas{justify-content:center; margin-top:28px;}
+
+  /* ---------- Footer ---------- */
+  footer{padding:52px 0 40px; border-top:1px solid var(--line); margin-top:30px;}
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:18px;}
+  footer .fbrand{font-family:'Fraunces',serif; font-size:1.1rem;}
+  footer .fnote{font-size:0.82rem; color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <nav class="wrap">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="#a6416b" stroke-width="2"/><path d="M14 8v6l4 3" stroke="#a6416b" stroke-width="2" stroke-linecap="round"/></svg>
+      Aarise
+    </div>
+    <div class="nav-links">
+      <ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#app">App</a></li>
+        <li><a href="#specs">Specs</a></li>
+      </ul>
+      <a class="nav-cta" href="#cta">Request a demo</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="eyebrow"><span class="dot"></span>Worn on the wrist. Working offline.</span>
+      <h1>A companion that <em>watches</em> when you can't.</h1>
+      <p class="lede">Aarise is a safety wearable built around one idea: help should never depend on a working app, a charged phone, or a strong signal. One press reaches someone who can act — on cellular, with your location attached.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#how">See how it works</a>
+        <a class="btn btn-ghost" href="#app">Open the app ↴</a>
+      </div>
+      <div class="hero-stats">
+        <div><b>3</b><span>SOS tiers, one button</span></div>
+        <div><b>LTE</b><span>Offline-first cellular</span></div>
+        <div><b>1-tap</b><span>Ride home, shared live</span></div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="watch-stage">
+        <span class="sos-badge">SOS armed</span>
+        <div class="watch-strap-top"></div>
+        <div class="watch-face">
+          <span class="watch-time">9:41</span>
+          <span class="watch-sub">HOLD FOR HELP</span>
+        </div>
+        <div class="watch-strap-bottom"></div>
+        <p class="watch-caption"><b>Aarise One</b> — the watch that sits quietly until it's needed.</p>
+      </div>
+
+      <div class="companion-wrap">
+        <svg id="pet" viewBox="0 0 160 150" width="128" height="120">
+          <ellipse cx="80" cy="120" rx="54" ry="14" fill="#17121922" />
+          <path d="M30 95 Q10 40 55 22 Q80 10 105 22 Q150 40 130 95 Q125 125 80 128 Q35 125 30 95 Z" fill="#171219"/>
+          <path d="M44 34 L30 2 L62 28 Z" fill="#171219"/>
+          <path d="M116 34 L130 2 L98 28 Z" fill="#171219"/>
+          <path d="M48 38 L38 14 L62 32 Z" fill="#a6416b"/>
+          <path d="M112 38 L122 14 L98 32 Z" fill="#a6416b"/>
+          <g id="pet-eye-l">
+            <circle cx="62" cy="62" r="15" fill="#faf6f7"/>
+            <circle class="pupil" cx="62" cy="62" r="6.5" fill="#171219"/>
+          </g>
+          <g id="pet-eye-r">
+            <circle cx="98" cy="62" r="15" fill="#faf6f7"/>
+            <circle class="pupil" cx="98" cy="62" r="6.5" fill="#171219"/>
+          </g>
+          <path d="M72 82 Q80 88 88 82" stroke="#a6416b" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M80 72 L77 80 L83 80 Z" fill="#a6416b"/>
+        </svg>
+        <p class="companion-caption">Nilo keeps watch, right in the corner of your screen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">Built for the moment it matters</span>
+      <h2>Protection that doesn't wait for a good connection.</h2>
+      <p>Every feature answers the same question: what happens in the ten seconds when someone can't reach for their phone, type a message, or explain where they are?</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><circle cx="19" cy="19" r="16" stroke="#a6416b" stroke-width="2"/><circle cx="19" cy="19" r="9" stroke="#a6416b" stroke-width="2"/><circle cx="19" cy="19" r="2.5" fill="#a6416b"/></svg>
+        <h3>Tiered SOS, one button</h3>
+        <p>A tap, a hold, and a long-hold each trigger a different response — from a silent location ping to contacts, to a loud local alarm. No menus to navigate under stress.</p>
+      </div>
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><path d="M8 24c6-14 16-14 22 0" stroke="#a6416b" stroke-width="2" stroke-linecap="round"/><path d="M4 17c8-16 22-16 30 0" stroke="#a6416b" stroke-width="2" stroke-linecap="round"/><circle cx="19" cy="29" r="2.5" fill="#a6416b"/></svg>
+        <h3>Offline-first, over cellular</h3>
+        <p>Alerts go out over LTE via an onboard SIM, not Wi-Fi or Bluetooth-to-phone. If the wearer's phone is dead, left behind, or out of range, Aarise still reaches out on its own.</p>
+      </div>
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><path d="M19 4c-7 0-12 5-12 12 0 9 12 18 12 18s12-9 12-18c0-7-5-12-12-12z" stroke="#a6416b" stroke-width="2"/><circle cx="19" cy="16" r="4" stroke="#a6416b" stroke-width="2"/></svg>
+        <h3>Live location, shared automatically</h3>
+        <p>GPS fix is attached to every alert and updates as the wearer moves, so the people who respond are following a live trail, not a last-known pin from an hour ago.</p>
+      </div>
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><path d="M9 29V15l10-9 10 9v14" stroke="#a6416b" stroke-width="2" stroke-linejoin="round"/><path d="M15 29v-8h8v8" stroke="#a6416b" stroke-width="2"/></svg>
+        <h3>"Get Me Home"</h3>
+        <p>One deep link books a ride from wherever the wearer is, shares the trip with their contacts in real time, and keeps the SOS tier active until they're signed in safe.</p>
+      </div>
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><circle cx="19" cy="19" r="15" stroke="#a6416b" stroke-width="2"/><path d="M19 11v8l6 4" stroke="#a6416b" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>Motion-aware alerting</h3>
+        <p>An onboard motion sensor recognises sudden falls or a struggle, and can raise a tier on its own — the wearer doesn't always have to be the one who presses anything.</p>
+      </div>
+      <div class="feature">
+        <svg class="ficon" viewBox="0 0 38 38" fill="none"><rect x="8" y="6" width="22" height="26" rx="3" stroke="#a6416b" stroke-width="2"/><path d="M14 13h10M14 19h10M14 25h6" stroke="#a6416b" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>A quiet trusted circle</h3>
+        <p>Contacts are set once, ranked by priority, and notified in order — so an alert always reaches someone, even if the first person doesn't pick up.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="how">
+    <div class="section-head">
+      <span class="tag">How a single press escalates</span>
+      <h2>Three tiers. One motion to learn, once.</h2>
+      <p>The same button means something different depending on how it's held — built so it still works when hands are shaking.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="tier">01</div>
+        <h4>Tap</h4>
+        <p>Drops a silent location pin to your trusted circle. No sound, no screen change — for when you just want someone watching.</p>
+      </div>
+      <div class="step">
+        <div class="tier">02</div>
+        <h4>Hold — 3s</h4>
+        <p>Sends a full alert with live location over cellular, and opens a call window to your first responder.</p>
+      </div>
+      <div class="step">
+        <div class="tier">03</div>
+        <h4>Hold — 6s</h4>
+        <p>Triggers a local audible alarm and escalates to every contact in your circle, in priority order, until one responds.</p>
+      </div>
+      <div class="step">
+        <div class="tier">+</div>
+        <h4>Get Me Home</h4>
+        <p>Available at any tier — books a ride, shares the trip live, and keeps your circle updated until you're home.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="app" class="app-section">
+  <div class="wrap">
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="phone-topbar"><b>Aarise</b><span>Armed</span></div>
+        <div class="phone-sos">
+          <b>Hold for SOS</b>
+          <span>Tier escalates the longer you hold</span>
+        </div>
+        <div class="phone-list">
+          <div class="phone-row"><div><b>Get Me Home</b><span>Book a ride, share live</span></div><span class="go">→</span></div>
+          <div class="phone-row"><div><b>Trusted circle</b><span>4 contacts, ranked</span></div><span class="go">→</span></div>
+          <div class="phone-row"><div><b>Watch battery</b><span>72% · last synced 2m ago</span></div><span class="go">→</span></div>
+          <div class="phone-row"><div><b>Alert history</b><span>No active alerts</span></div><span class="go">→</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="app-copy">
+      <span class="eyebrow"><span class="dot"></span>The companion app</span>
+      <h2 style="font-size:clamp(1.8rem,3vw,2.3rem); margin-top:12px;">The watch acts. The app keeps everyone else informed.</h2>
+      <ul>
+        <li><span class="num">01</span><p><b>Pairs once, works quietly.</b> Set up your trusted circle and alert tiers, then the app mostly stays out of the way.</p></li>
+        <li><span class="num">02</span><p><b>Mirrors every alert.</b> Contacts see the same live location and tier the watch is broadcasting, with no extra app required on their end.</p></li>
+        <li><span class="num">03</span><p><b>Books the ride home.</b> "Get Me Home" works from the app or the watch, and shares the trip until the wearer checks in.</p></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="specs">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">What's inside Aarise One</span>
+      <h2>Simple hardware, chosen for reliability over range.</h2>
+    </div>
+    <table class="specs-table">
+      <tr><td>Microcontroller</td><td>ESP32 — handles sensor input, button tiers, and local logic on the wrist.</td></tr>
+      <tr><td>Cellular module</td><td>SIM7000E (LTE / 4G) — sends alerts independent of the wearer's phone or Wi-Fi.</td></tr>
+      <tr><td>Positioning</td><td>NEO-M8N GPS — attaches a live location fix to every alert and ride request.</td></tr>
+      <tr><td>Motion sensing</td><td>MPU6050 accelerometer + gyroscope — recognises falls and sudden motion to raise a tier automatically.</td></tr>
+      <tr><td>Form factor</td><td>Watch-worn, single physical button, designed to be operated without looking at it.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="cta">
+  <div class="cta-band">
+    <h2>Aarise is a working prototype, built and ready to demo.</h2>
+    <p>Watch, app, and backend — all wired together for the pitch.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="mailto:hello@aarise.app">Request a walkthrough</a>
+      <a class="btn btn-ghost" href="#specs">Read the specs</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="fbrand">Aarise</span>
+    <span class="fnote">A student venture submission. Built with Nilo watching your cursor, not your data.</span>
+  </div>
+</footer>
+
+<script>
+  // Companion pet: pupils track cursor direction, clamped within each eye socket.
+  (function(){
+    const pupils = document.querySelectorAll('#pet .pupil');
+    const eyeCenters = [{x:62,y:62},{x:98,y:62}];
+    const maxOffset = 4.2;
+    const svg = document.getElementById('pet');
+
+    function updateFromClient(clientX, clientY){
+      const rect = svg.getBoundingClientRect();
+      pupils.forEach((pupil, i) => {
+        const centerScreenX = rect.left + (eyeCenters[i].x/160)*rect.width;
+        const centerScreenY = rect.top + (eyeCenters[i].y/150)*rect.height;
+        const dx = clientX - centerScreenX;
+        const dy = clientY - centerScreenY;
+        const dist = Math.min(1, Math.hypot(dx,dy)/260);
+        const angle = Math.atan2(dy,dx);
+        const ox = Math.cos(angle) * maxOffset * dist;
+        const oy = Math.sin(angle) * maxOffset * dist;
+        pupil.setAttribute('cx', eyeCenters[i].x + ox);
+        pupil.setAttribute('cy', eyeCenters[i].y + oy);
+      });
+    }
+
+    window.addEventListener('pointermove', (e) => updateFromClient(e.clientX, e.clientY));
+    window.addEventListener('scroll', () => {
+      // keep eyes resting center-ish on scroll without a pointer event
+    }, {passive:true});
+
+    // gentle idle drift when the pointer hasn't moved in a while, so the pet still feels alive
+    let idleTimer = null;
+    let lastMove = Date.now();
+    window.addEventListener('pointermove', () => { lastMove = Date.now(); });
+    function idleLoop(){
+      if (Date.now() - lastMove > 2200 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+        const t = Date.now()/900;
+        pupils.forEach((pupil,i)=>{
+          const ox = Math.sin(t + i)*1.6;
+          const oy = Math.cos(t*0.8 + i)*1.2;
+          pupil.setAttribute('cx', eyeCenters[i].x + ox);
+          pupil.setAttribute('cy', eyeCenters[i].y + oy);
+        });
+      }
+      requestAnimationFrame(idleLoop);
+    }
+    requestAnimationFrame(idleLoop);
+  })();
+
+  // Watch face: live time
+  (function(){
+    const el = document.querySelector('.watch-time');
+    function tick(){
+      const d = new Date();
+      let h = d.getHours() % 12; if(h===0) h=12;
+      const m = d.getMinutes().toString().padStart(2,'0');
+      el.textContent = h + ':' + m;
+    }
+    tick(); setInterval(tick, 15000);
+  })();
+</script>
+</body>
+</html>
